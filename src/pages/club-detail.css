@@ -47,6 +47,16 @@
   background: #784ea2;
   color: #fff;
 }
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 任意比例填满圆角方块，裁剪居中 */
+  display: block;
+}
+.logo:has(img) {
+  overflow: hidden;
+  background: #fff; /* 有图时分类底色改为白底，透明底 PNG 垫白 */
+}
 .hero-main {
   flex: 1;
   min-width: 0;

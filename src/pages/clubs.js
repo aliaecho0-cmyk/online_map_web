@@ -115,7 +115,9 @@ class ClubsPage {
       const card = document.createElement('div');
       card.className = 'club-card';
       card.innerHTML = `
-        <div class="logo cat-${catKey}">${escapeHtml(club.name ? club.name[0] : '社')}</div>
+        <div class="logo cat-${catKey}">${club.logo
+          ? `<img class="logo-img" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)}" loading="lazy" />`
+          : escapeHtml(club.name ? club.name[0] : '社')}</div>
         <div class="main">
           <div class="row1">
             <span class="name">${nameHtml(club.name, club.nameSegments)}</span>

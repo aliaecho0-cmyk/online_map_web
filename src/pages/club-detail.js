@@ -37,7 +37,9 @@ class ClubDetailPage {
     this.el.innerHTML = `
       <div class="page club-detail-page">
         <div class="hero">
-          <div class="logo cat-${catKey}">${escapeHtml(club.name ? club.name[0] : '社')}</div>
+          <div class="logo cat-${catKey}">${club.logo
+            ? `<img class="logo-img" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)}" />`
+            : escapeHtml(club.name ? club.name[0] : '社')}</div>
           <div class="hero-main">
             <div class="name">${escapeHtml(club.name)}</div>
             <div class="tags">
