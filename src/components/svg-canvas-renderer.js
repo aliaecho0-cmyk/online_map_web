@@ -230,7 +230,7 @@ function drawPath(ctx, d) {
   }
 }
 
-function walk(ctx, node, st) {
+function walk(ctx, node, st, opts) {
   const a = node.attrs;
   const child = Object.assign({}, st);
   if (a.fill != null) child.fill = a.fill;
@@ -257,7 +257,7 @@ function walk(ctx, node, st) {
       const h = parseFloat(a.height) || 0;
       const r = parseFloat(a.rx || a.ry || 0);
       roundedRectPath(ctx, x, y, w, h, r);
-      if (fill && child.fill !== 'none') { ctx.fillStyle = fill; ctx.fill(); }
+      if (fill && child.fill !== 'none' && !(opts && opts.skipFill && opts.skipFill(a))) { ctx.fillStyle = fill; ctx.fill(); }
       if (stroke && child.stroke !== 'none') { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke(); }
       break;
     }
@@ -319,7 +319,7 @@ function walk(ctx, node, st) {
       break;
   }
 
-  for (const c of node.children) walk(ctx, c, child);
+  for (const c of node.children) walk(ctx, c, child, opts);
   ctx.restore();
 }
 
@@ -327,8 +327,9 @@ function walk(ctx, node, st) {
  * 渲染 SVG 字符串到 canvas 2D 上下文。
  * @param {CanvasRenderingContext2D} ctx 已按目标尺寸 + dpr 缩放好的上下文
  * @param {string} svg SVG 字符串
+ * @param {{skipFill?: (attrs: object) => boolean}} [opts] skipFill 对某元素返回 true 时跳过填充（仍画描边）
  */
-function renderSVG(ctx, svg) {
+function renderSVG(ctx, svg, opts = {}) {
   if (!ctx || !svg) return;
   ctx.save();
   const root = parseSVG(svg);
@@ -337,7 +338,7 @@ function renderSVG(ctx, svg) {
     fill: '#000', fillOpacity: 1, stroke: 'none', strokeWidth: 1, strokeOpacity: 1,
     fontFamily: 'sans-serif', fontWeight: '400', fontSize: 16,
   };
-  for (const c of svgEl.children) walk(ctx, c, baseStyle);
+  for (const c of svgEl.children) walk(ctx, c, baseStyle, opts);
   ctx.restore();
 }
 

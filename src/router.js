@@ -58,6 +58,16 @@ function render() {
   }
   pageEl.innerHTML = '';
 
+  // 像素擦除过渡：mount 在遮条下方同步完成，随后遮条 8 步离散右移揭示新页面
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const bar = document.createElement('div');
+    bar.className = 'px-wipe';
+    document.body.appendChild(bar);
+    const done = () => bar.remove();
+    bar.addEventListener('animationend', done);
+    setTimeout(done, 450);
+  }
+
   if (isTab) {
     headerEl.style.display = 'none';
     tabbarEl.style.display = '';

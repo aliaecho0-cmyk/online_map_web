@@ -1,28 +1,44 @@
-/* pages/events.css — 活动列表（移植自 events.wxss） */
+/* pages/events.css — 活动列表（千禧数码像素风） */
 .events-page {
   min-height: 100vh;
-  padding-bottom: 50px;
+  padding-bottom: calc(50px + var(--safe-b));
 }
 .filter-bar {
   display: flex;
   background: var(--bg-color-white);
-  padding: 8px 12px;
+  padding: 10px 12px;
   position: sticky;
   top: 0;
   z-index: 10;
+  border-bottom: var(--px-border-w) solid var(--px-border);
 }
 .filter-item {
   margin-right: 8px;
-  padding: 4px 14px;
-  border-radius: 6px;
+  padding: 0 14px;
+  min-height: 32px;
+  line-height: 30px;
+  border: var(--px-border-w) solid var(--px-border);
+  border-radius: 0;
   background: var(--fill-soft);
   color: var(--text-color-regular);
-  font-size: 13px;
+  font-size: 12px;
+  font-family: var(--font-px);
   cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-step), background var(--dur-fast) var(--ease-step);
+}
+.filter-item:active {
+  transform: translate(2px, 2px);
+  background: var(--px-line);
+}
+@media (hover: hover) {
+  .filter-item:hover {
+    background: var(--px-line);
+  }
 }
 .filter-item.active {
-  background: var(--primary-color);
+  background: var(--pal-deep);
   color: #fff;
+  animation: px-bounce 0.28s var(--ease-pop);
 }
 .timeline {
   padding: 12px;
@@ -41,29 +57,31 @@
 .time {
   font-size: 16px;
   font-weight: 500;
+  font-family: var(--font-px);
   color: var(--text-color-primary);
 }
 .type-tag {
   display: inline-block;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 12px;
+  font-family: var(--font-px);
   padding: 1px 7px;
-  border-radius: 6px;
+  border-radius: 0;
   color: #fff;
 }
 .type-stage_show {
-  background: #6a59aa;
+  background: var(--pal-deep);
 }
 .type-npc {
-  background: #e6a23c;
+  background: var(--px-deepest);
 }
 .type-reward {
-  background: #f28c28;
+  background: var(--px-hot);
 }
 .content {
   flex: 1;
   min-width: 0;
-  border-left: 1px solid var(--border-color-light);
+  border-left: var(--px-border-w) solid var(--px-line);
   padding-left: 12px;
 }
 .title {

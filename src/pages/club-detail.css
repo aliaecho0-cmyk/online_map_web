@@ -1,25 +1,30 @@
-/* pages/club-detail.css — 社团详情（移植自 club-detail.wxss） */
+/* pages/club-detail.css — 社团详情（千禧数码像素风） */
 .club-detail-page {
   min-height: 100vh;
   padding: 12px;
   padding-bottom: 30px;
+  animation: px-slide-in 0.3s steps(5) both;
 }
 .hero {
   display: flex;
   align-items: center;
   background: var(--bg-color-white);
-  border-radius: 10px;
+  border: var(--px-border-w) solid var(--px-border);
+  border-radius: var(--border-radius-lg);
   padding: 16px 12px;
   margin-bottom: 10px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 3px 3px 0 var(--px-shadow);
 }
 .logo {
   width: 60px;
   height: 60px;
-  border-radius: 10px;
+  border-radius: 0;
+  border: var(--px-border-w) solid var(--px-border);
+  box-sizing: border-box;
   background: var(--primary-light);
   color: var(--primary-color);
   font-size: 28px;
+  font-family: var(--font-px);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -28,29 +33,29 @@
   flex-shrink: 0;
 }
 .logo.cat-academic {
-  background: #7a68a8;
+  background: var(--cat-academic);
   color: #fff;
 }
 .logo.cat-tech {
-  background: #6e6ad8;
+  background: var(--cat-tech);
   color: #fff;
 }
 .logo.cat-art {
-  background: #63549f;
+  background: var(--cat-art);
   color: #fff;
 }
 .logo.cat-sport {
-  background: #6b75c9;
-  color: #fff;
+  background: var(--cat-sport);
+  color: var(--px-sport-ink);
 }
 .logo.cat-volunteer {
-  background: #784ea2;
+  background: var(--cat-volunteer);
   color: #fff;
 }
 .logo img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* 任意比例填满圆角方块，裁剪居中 */
+  object-fit: cover; /* 任意比例填满方块，裁剪居中 */
   display: block;
 }
 .logo:has(img) {
@@ -64,6 +69,8 @@
 .name {
   font-size: 18px;
   font-weight: 500;
+  font-family: var(--font-px);
+  letter-spacing: 1px;
   color: var(--text-color-primary);
 }
 .tags {
@@ -73,31 +80,24 @@
   margin-top: 6px;
   gap: 6px;
 }
-.tag {
-  font-size: 10px;
-  color: var(--primary-dark);
-  background: var(--primary-light);
-  padding: 2px 8px;
-  border-radius: 6px;
-}
 .tag.cat-academic {
-  background: #7a68a8;
+  background: var(--cat-academic);
   color: #fff;
 }
 .tag.cat-tech {
-  background: #6e6ad8;
+  background: var(--cat-tech);
   color: #fff;
 }
 .tag.cat-art {
-  background: #63549f;
+  background: var(--cat-art);
   color: #fff;
 }
 .tag.cat-sport {
-  background: #6b75c9;
-  color: #fff;
+  background: var(--cat-sport);
+  color: var(--px-sport-ink);
 }
 .tag.cat-volunteer {
-  background: #784ea2;
+  background: var(--cat-volunteer);
   color: #fff;
 }
 .tag-blue {
@@ -115,20 +115,27 @@
 .fav {
   flex-shrink: 0;
   font-size: 12px;
+  font-family: var(--font-px);
   color: var(--text-color-regular);
-  border: 1px solid var(--border-color-light);
-  padding: 4px 10px;
-  border-radius: 6px;
+  border: var(--px-border-w) solid var(--px-border);
+  padding: 5px 10px;
+  border-radius: 0;
   cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-step);
+}
+.fav:active {
+  transform: translate(2px, 2px);
 }
 .fav.on {
-  color: var(--primary-color);
-  border-color: var(--primary-color);
+  color: var(--pal-deep);
+  border-color: var(--pal-deep);
   background: var(--primary-light);
 }
 .section-title {
   font-size: 14px;
   font-weight: 500;
+  font-family: var(--font-px);
+  letter-spacing: 1px;
   color: var(--text-color-primary);
   margin-bottom: 8px;
 }
@@ -149,9 +156,11 @@
   justify-content: space-between;
 }
 .booth-id {
-  font-size: 15px;
+  font-size: 24px;
   font-weight: 500;
-  color: var(--primary-color);
+  font-family: var(--font-px);
+  letter-spacing: 1px;
+  color: var(--pal-deep);
 }
 .map-btn {
   font-size: 13px;

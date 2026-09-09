@@ -17,7 +17,7 @@ class EventDetailPage {
   mount(container, query) {
     this.el = container;
     this.eventId = query.id;
-    container.innerHTML = '<div class="page event-detail-page"><div class="empty">加载中…</div></div>';
+    container.innerHTML = '<div class="page event-detail-page"><div class="empty">加载中<span class="px-spin"></span></div></div>';
     this.load();
   }
 

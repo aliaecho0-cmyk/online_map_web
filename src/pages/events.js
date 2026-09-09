@@ -27,7 +27,7 @@ class EventsPage {
     container.innerHTML = `
       <div class="page events-page">
         <div class="filter-bar"></div>
-        <div class="timeline"></div>
+        <div class="timeline stagger"></div>
       </div>`;
     this.filterBar = container.querySelector('.filter-bar');
     this.timeline = container.querySelector('.timeline');
@@ -58,11 +58,12 @@ class EventsPage {
 
   render(events) {
     this.timeline.innerHTML = '';
-    events.forEach((evt) => {
+    events.forEach((evt, index) => {
       const isStage = evt.type === 'stage_show';
       const typeLabel = isStage ? '舞台' : evt.type === 'npc' ? 'NPC' : '兑奖';
       const card = document.createElement('div');
       card.className = 'event-card card';
+      card.style.setProperty('--i', Math.min(index, 8));
       card.innerHTML = `
         <div class="time-col">
           <div class="time">${isStage ? escapeHtml(formatTime(evt.startTime)) : '全天'}</div>

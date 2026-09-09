@@ -114,7 +114,7 @@ export class MapTutorial {
         right: `left:${b.left + b.width}px;top:${b.top}px;width:${Math.max(0, W - (b.left + b.width))}px;height:${b.height}px;`,
       };
       const shape = arr[0] && arr[0].shape;
-      const rx = shape === 'circle' ? Math.min(b.width, b.height) / 2 + pad : 18;
+      const rx = shape === 'circle' ? Math.min(b.width, b.height) / 2 + pad : 4; /* 像素风方角聚光灯 */
       spot = `left:${b.left - pad}px;top:${b.top - pad}px;width:${b.width + 2 * pad}px;height:${b.height + 2 * pad}px;border-radius:${rx}px;`;
     }
 

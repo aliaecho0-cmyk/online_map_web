@@ -19,7 +19,7 @@ class ClubDetailPage {
   mount(container, query) {
     this.el = container;
     this.clubId = query.clubId;
-    container.innerHTML = '<div class="page club-detail-page"><div class="empty">加载中…</div></div>';
+    container.innerHTML = '<div class="page club-detail-page"><div class="empty">加载中<span class="px-spin"></span></div></div>';
     this.load();
   }
 

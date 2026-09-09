@@ -38,7 +38,7 @@ class ClubsPage {
         </div>
         <div class="cat-bar"></div>
         <div class="count"></div>
-        <div class="list"></div>
+        <div class="list stagger"></div>
       </div>`;
 
     this.searchInput = container.querySelector('.search-input');
@@ -110,10 +110,11 @@ class ClubsPage {
 
   renderList(clubs) {
     this.list.innerHTML = '';
-    clubs.forEach((club) => {
+    clubs.forEach((club, index) => {
       const catKey = CAT_KEY_MAP[club.category] || 'default';
       const card = document.createElement('div');
       card.className = 'club-card';
+      card.style.setProperty('--i', Math.min(index, 12));
       card.innerHTML = `
         <div class="logo cat-${catKey}">${club.logo
           ? `<img class="logo-img" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)}" loading="lazy" />`

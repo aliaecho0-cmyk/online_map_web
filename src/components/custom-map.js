@@ -10,6 +10,7 @@
 import * as canvasMap from '../utils/canvas-map.js';
 import SVG_BASE_FALLBACK from './historical-map-svg.js';
 import renderSVG from './svg-canvas-renderer.js';
+import { createMapPainter } from './map-painter.js';
 
 const MAP_WIDTH = canvasMap.GRID_COLS * canvasMap.CELL_PX;
 const MAP_HEIGHT = canvasMap.GRID_ROWS * canvasMap.CELL_PX;
@@ -120,8 +121,16 @@ export class CustomMap {
       this._baseCtx = null;
     }
 
-    // 包内模式：直接用 historical-map-svg.js
-    this._svgString = SVG_BASE_FALLBACK;
+    // 包内模式：直接用 historical-map-svg.js；像素贴图层就绪后网格线换丁香紫
+    this._painter = null;
+    try {
+      this._painter = await createMapPainter();
+    } catch (err) {
+      console.warn('[custom-map] 地图贴图加载失败，回退纯色底图', err);
+    }
+    this._svgString = this._painter
+      ? SVG_BASE_FALLBACK.replace(/#e2e4e8/gi, '#c386db')
+      : SVG_BASE_FALLBACK;
     this._renderBaseToOffscreen();
     this._drawAll();
 
@@ -336,7 +345,12 @@ export class CustomMap {
     ctx.save();
     ctx.translate(tx, ty);
     ctx.scale(scale, scale);
-    renderSVG(ctx, svg);
+    if (this._painter) this._painter.paint(ctx);
+    renderSVG(ctx, svg, {
+      skipFill: this._painter
+        ? (a) => this._painter.paintedKeys.has(`${a['data-x']},${a['data-y']}`)
+        : null,
+    });
     ctx.restore();
   }
 
@@ -386,7 +400,7 @@ export class CustomMap {
     ctx.save();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
     ctx.fillRect(x + 2, y + 2, cellPx - 4, cellPx - 4);
-    ctx.strokeStyle = '#e8703a';
+    ctx.strokeStyle = '#925cd1';
     ctx.lineWidth = 3;
     ctx.strokeRect(x + 2, y + 2, cellPx - 4, cellPx - 4);
     ctx.restore();
@@ -401,9 +415,9 @@ export class CustomMap {
     const w = (r.w || 1) * cellPx;
     const h = (r.h || 1) * cellPx;
     ctx.save();
-    ctx.fillStyle = 'rgba(232, 112, 58, 0.16)';
+    ctx.fillStyle = 'rgba(146, 92, 209, 0.2)';
     ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = '#e8703a';
+    ctx.strokeStyle = '#925cd1';
     ctx.lineWidth = 4;
     ctx.strokeRect(x, y, w, h);
     ctx.restore();

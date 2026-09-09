@@ -1,39 +1,45 @@
-/* pages/event-detail.css — 活动详情（移植自 event-detail.wxss） */
+/* pages/event-detail.css — 活动详情（千禧数码像素风） */
 .event-detail-page {
   min-height: 100vh;
   padding: 12px;
   padding-bottom: 30px;
+  animation: px-slide-in 0.3s steps(5) both;
 }
 .head {
-  border-radius: 10px;
+  border: var(--px-border-w) solid var(--px-border);
+  border-radius: 0;
   padding: 20px 16px;
   margin-bottom: 10px;
-  color: var(--text-color-primary);
-  background: #c0b3e5; /* 舞台：淡紫 */
+  color: var(--px-ink);
+  background: #e5b5f1; /* 舞台：粉紫 tint */
+  box-shadow: 3px 3px 0 var(--px-shadow);
 }
 .head.npc {
-  background: #f6de8c; /* 隐藏任务：亮淡黄（去土黄） */
+  background: #ead2f5; /* 隐藏任务：更浅的粉紫 tint */
 }
 .head.reward {
-  background: #f8c08c; /* 兑奖点：淡橙 */
+  background: #d9b8ec; /* 兑奖点：丁香紫 tint */
 }
 .type {
   display: inline-block;
-  font-size: 11px;
+  font-size: 12px;
+  font-family: var(--font-px);
   color: #fff;
-  background: #6a59aa;
+  background: var(--pal-deep);
   padding: 2px 9px;
-  border-radius: 10px;
+  border-radius: 0;
 }
 .head.npc .type {
-  background: #e6a23c;
+  background: var(--px-deepest);
 }
 .head.reward .type {
-  background: #f28c28;
+  background: var(--px-hot);
 }
 .title {
   font-size: 20px;
   font-weight: 600;
+  font-family: var(--font-px);
+  letter-spacing: 1px;
   margin-top: 8px;
 }
 .time {
@@ -58,6 +64,8 @@
 .section-title {
   font-size: 14px;
   font-weight: 500;
+  font-family: var(--font-px);
+  letter-spacing: 1px;
   color: var(--text-color-primary);
   margin-bottom: 8px;
 }

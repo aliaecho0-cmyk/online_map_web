@@ -57,7 +57,7 @@ class MapPage {
           <div class="map-legend">
             <div class="legend-item"><span class="dot booth"></span>社团摊位</div>
             <div class="legend-item"><span class="dot landscape"></span>草坪 / 广场</div>
-            <div class="legend-item"><span class="dot activity"></span>可活动区域</div>
+            <div class="legend-item"><span class="dot activity"></span>石板路</div>
           </div>
           <div class="club-callout" id="clubCallout" style="display:none">
             <div class="cc-close">×</div>
@@ -109,7 +109,49 @@ class MapPage {
       state.tutorial.setOnSkip(() => this.onSkipTutorial());
     }
 
+    // 占位符打字机（聚焦时暂停，减少动态时跳过）
+    this._typeTimer = null;
+    this._startPlaceholderTyping();
+
     this.loadData();
+  }
+
+  /* ---------- 占位符打字机 ---------- */
+  _startPlaceholderTyping() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const PH = '搜索社团';
+    let i = 0;
+    let phase = 0; // 0 打字 / 1 停顿 / 2 退格
+    const tick = () => {
+      if (document.activeElement === this.searchInput) {
+        // 聚焦时暂停，失焦后恢复
+        this._typeTimer = setTimeout(tick, 400);
+        return;
+      }
+      if (phase === 0) {
+        i += 1;
+        this.searchInput.placeholder = PH.slice(0, i);
+        if (i >= PH.length) {
+          phase = 1;
+          this._typeTimer = setTimeout(tick, 1400);
+        } else {
+          this._typeTimer = setTimeout(tick, 90);
+        }
+      } else if (phase === 1) {
+        phase = 2;
+        this._typeTimer = setTimeout(tick, 200);
+      } else {
+        i -= 1;
+        this.searchInput.placeholder = PH.slice(0, i);
+        if (i <= 0) {
+          phase = 0;
+          this._typeTimer = setTimeout(tick, 700);
+        } else {
+          this._typeTimer = setTimeout(tick, 60);
+        }
+      }
+    };
+    this._typeTimer = setTimeout(tick, 600);
   }
 
   async loadData() {
@@ -146,14 +188,25 @@ class MapPage {
   renderAnnouncements(list) {
     this.annList.innerHTML = '';
     list.forEach((a) => {
+      const title = escapeHtml(a.title);
       const bar = h('div', 'ann-bar', `
         <span class="ann-tag">公告</span>
-        <span class="ann-title">${escapeHtml(a.title)}</span>
+        <span class="ann-scroll"><span class="ann-track">
+          <span class="ann-title">${title}</span>
+          <span class="ann-title" aria-hidden="true">${title}</span>
+        </span></span>
         <span class="ann-arrow">›</span>`);
       bar.addEventListener('click', () => {
         wx.showModal({ title: a.title, content: a.content, showCancel: false, confirmText: '知道了' });
       });
       this.annList.appendChild(bar);
+      // 长标题跑马灯：自然宽超出可视区才开启，按溢出比映射 4-12s 时长
+      const titleEl = bar.querySelector('.ann-title');
+      const boxW = bar.querySelector('.ann-scroll').clientWidth;
+      if (titleEl && boxW > 0 && titleEl.scrollWidth > boxW + 1) {
+        bar.classList.add('marquee');
+        bar.style.setProperty('--dur', Math.min(12, Math.max(4, (titleEl.scrollWidth / boxW) * 2.5)).toFixed(1) + 's');
+      }
     });
   }
 
@@ -205,6 +258,10 @@ class MapPage {
     this.callout.style.left = left + 'px';
     this.callout.style.top = top + 'px';
     this._currentBooth = booth;
+    // 重触发弹出动画：摘下 pop 类强制重排再挂回（连续点击不同摊位也能重播）
+    this.callout.classList.remove('pop');
+    void this.callout.offsetWidth;
+    this.callout.classList.add('pop');
   }
 
   onCalloutClose() {
@@ -513,6 +570,7 @@ class MapPage {
   destroy() {
     clearTimeout(this._mapReadyTimer);
     clearTimeout(this._plazaHlTimer);
+    clearTimeout(this._typeTimer);
     this._resetTutorialState();
     if (this.map) this.map.destroy();
     this.el.innerHTML = '';
