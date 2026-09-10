@@ -233,9 +233,9 @@ const activities = [
     mapX: 15.5, mapY: 21.5, status: 'open' },
   { id: 'evt-reward', type: 'reward', title: '社联兑奖点', clubId: '',
     startTime: '2026-09-19 15:00', endTime: '2026-09-19 19:00',
-    location: '学一南门旁兑奖点', area: 'A',
+    location: '左上角社联兑奖点', area: 'A',
     desc: '凭活动奖励到补给站兑换礼品，月亮/星星吊坠限量放送。',
-    mapX: 2.5, mapY: 22, status: 'open' },
+    mapX: 4, mapY: 3.5, status: 'open' },
 ];
 
 

@@ -1,0 +1,12 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>地图全景检查</title>
+<style>@font-face{font-family:px-cjk;src:url('/src/assets/fonts/fusion-pixel-12px-proportional-zh_hans.otf.woff2')}body{margin:0;background:#eeeaf3;display:flex;justify-content:center}canvas{image-rendering:pixelated;width:min(100vw,720px);height:auto}</style>
+<canvas width="720" height="720"></canvas>
+<script type="module">
+import {createMapPainter} from '/src/components/map-painter.js';
+import {booths} from '/src/data/mock.js';
+await document.fonts.load('12px px-cjk', '社联兑奖点');
+const c=document.querySelector('canvas'),ctx=c.getContext('2d');
+ctx.scale(24,24);createMapPainter().paint(ctx);ctx.resetTransform();
+ctx.font='12px px-cjk';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#594661';
+for(const b of booths)ctx.fillText(b.id,b.mapX*24,b.mapY*24+2);
+</script></html>

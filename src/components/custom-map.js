@@ -2,8 +2,7 @@
  * components/custom-map.js — 30×30 格栅化校园地图（web 版，由小程序 Component 重写为 class）
  *
  * 与原组件保持一致的坐标/手势/绘制逻辑：
- * - 整张地图用 <canvas> 绘制命令生成，底图来自 historical-map-svg.js 的 SVG 字符串，
- *   经 svg-canvas-renderer 直接渲染进 canvas（不加载图片）。
+ * - map-painter 统一绘制像素地形与建筑，historical-map-svg 保留语义底图。
  * - 缩放/平移只通过 canvas 元素的 CSS transform 实现，位图整体缩放。
  * - 手势：触摸事件（非 passive + preventDefault，从宿主 WebView 手里抢回手势）
  *   与鼠标事件分两路；滚轮平移，Ctrl/⌘+滚轮缩放。
@@ -12,7 +11,7 @@
 import * as canvasMap from '../utils/canvas-map.js';
 import SVG_BASE_FALLBACK from './historical-map-svg.js';
 import renderSVG from './svg-canvas-renderer.js';
-import { createMapPainter } from './map-painter.js';
+import { createMapPainter, MAP_PIXEL_SIZE } from './map-painter.js';
 
 const MAP_WIDTH = canvasMap.GRID_COLS * canvasMap.CELL_PX;
 const MAP_HEIGHT = canvasMap.GRID_ROWS * canvasMap.CELL_PX;
@@ -59,6 +58,7 @@ export class CustomMap {
     this._baseCtx = null;
     this._baseDrawn = false;
     this._svgString = SVG_BASE_FALLBACK;
+    this._painter = createMapPainter();
 
     // 手势运行时
     this._gesture = null;
@@ -77,10 +77,12 @@ export class CustomMap {
     window.addEventListener('resize', this._onResize);
 
     // 尺寸/坐标/初始取景必须同步完成：页面在微任务里就会调 focusMapPoint，
-    // 若等到贴图加载完再设 _rect，那次聚焦会白做并被随后的取景覆盖。
+    // 地图就绪后即可响应页面聚焦。
     this._initCanvasSync();
     this._bindGestures();
-    this._loadPainter();
+    this._renderBaseToOffscreen();
+    this._baseDrawn = true;
+    this._drawAll();
   }
 
   /** 更新摊位列表（数据变化时重绘，缩放/平移不重绘） */
@@ -114,6 +116,7 @@ export class CustomMap {
     canvas.height = MAP_HEIGHT * dpr;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = false;
     this._canvas = canvas;
     this._ctx = ctx;
     this._dpr = dpr;
@@ -121,10 +124,11 @@ export class CustomMap {
     // 离屏 canvas 一次性渲染底图
     try {
       const off = document.createElement('canvas');
-      off.width = MAP_WIDTH * dpr;
-      off.height = MAP_HEIGHT * dpr;
+      off.width = MAP_PIXEL_SIZE;
+      off.height = MAP_PIXEL_SIZE;
       const offCtx = off.getContext('2d');
-      offCtx.scale(dpr, dpr);
+      // 原生像素尺寸绘制，再以最近邻放大，避免 1.5 倍栅格产生半像素模糊。
+      offCtx.scale(MAP_PIXEL_SIZE / MAP_WIDTH, MAP_PIXEL_SIZE / MAP_HEIGHT);
       this._baseCanvas = off;
       this._baseCtx = offCtx;
     } catch (err) {
@@ -138,29 +142,15 @@ export class CustomMap {
     this._refreshFont();
   }
 
-  /** 异步部分：加载像素贴图层，就绪后重绘（失败则一直用纯 SVG 底图） */
-  async _loadPainter() {
-    // 包内模式：直接用 historical-map-svg.js；像素贴图层就绪后网格线换丁香紫
-    this._painter = null;
-    try {
-      this._painter = await createMapPainter();
-    } catch (err) {
-      console.warn('[custom-map] 地图贴图加载失败，回退纯色底图', err);
-    }
-    this._svgString = this._painter
-      ? SVG_BASE_FALLBACK.replace(/#e2e4e8/gi, '#c386db')
-      : SVG_BASE_FALLBACK;
-    this._renderBaseToOffscreen();
-    this._baseDrawn = true;
-    this._drawAll();
-  }
-
   /** 像素字体就绪后补一次重绘（canvas 不会自己重排已经画上去的文字） */
   _refreshFont() {
     const fonts = document.fonts;
     if (!fonts || typeof fonts.load !== 'function') return;
-    fonts.load('24px "px-cjk"', '0123456789').then(
-      () => this._drawAll(),
+    fonts.load('18px "px-cjk"', '0123456789社联兑奖点一瓯茶草坪图书馆').then(
+      () => {
+        this._renderBaseToOffscreen();
+        this._drawAll();
+      },
       () => {}
     );
   }
@@ -480,11 +470,7 @@ export class CustomMap {
     ctx.translate(tx, ty);
     ctx.scale(scale, scale);
     if (this._painter) this._painter.paint(ctx);
-    renderSVG(ctx, svg, {
-      skipFill: this._painter
-        ? (a) => this._painter.paintedKeys.has(`${a['data-x']},${a['data-y']}`)
-        : null,
-    });
+    else renderSVG(ctx, svg);
     ctx.restore();
   }
 
@@ -530,17 +516,17 @@ export class CustomMap {
     const cellPx = canvasMap.CELL_PX;
     ctx.save();
     // 状态会被上一个绘制函数残留，这里全部显式设定
-    ctx.font = '24px "px-cjk", sans-serif'; // 像素字体原生 12px，24px 是整数 2 倍
+    ctx.font = '18px "px-cjk", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
     ctx.miterLimit = 2;
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#eef1ee';
-    ctx.fillStyle = '#925cd1';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#f5efd9';
+    ctx.fillStyle = '#594661';
     for (const b of this._booths) {
       const x = b.mapX * cellPx;
-      const y = b.mapY * cellPx;
+      const y = b.mapY * cellPx + 3;
       ctx.strokeText(b.id, x, y);
       ctx.fillText(b.id, x, y);
     }

@@ -242,7 +242,9 @@
 .map-legend {
   position: absolute;
   left: 10px;
-  top: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 10px;
   pointer-events: none; /* 别吃掉左上角的拖动 */
   background: var(--bg-color-white);
   border: var(--px-border-w) solid var(--px-border);
@@ -265,13 +267,14 @@
   box-sizing: border-box;
 }
 .dot.booth {
-  background: var(--pal-deep);
+  background: #a9c799;
+  border: 1px solid #594661;
 }
 .dot.landscape {
-  background: var(--pal-lilac);
+  background: #b7d1a5;
 }
 .dot.activity {
-  background: var(--px-ink-faint);
+  background: #cec6d1;
 }
 
 /* ---------- 摊位气泡 ---------- */

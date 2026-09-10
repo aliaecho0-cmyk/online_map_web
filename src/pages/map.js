@@ -466,6 +466,8 @@ class MapPage {
             new Promise((res) => {
               setTimeout(() => {
                 const r = c.getPointScreenRect(tut.SOCIAL_UNION.mapX, tut.SOCIAL_UNION.mapY, 1.0);
+                r.left -= r.width / 2;
+                r.width *= 2; // 社联是一座完整的 4×2 格展台。
                 res(this._pack([this._toRect(r, 'round')]));
               }, 500);
             })
