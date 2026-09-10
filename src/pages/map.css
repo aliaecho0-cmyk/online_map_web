@@ -243,6 +243,7 @@
   position: absolute;
   left: 10px;
   top: 10px;
+  pointer-events: none; /* 别吃掉左上角的拖动 */
   background: var(--bg-color-white);
   border: var(--px-border-w) solid var(--px-border);
   border-radius: 0;

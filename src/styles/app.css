@@ -453,6 +453,8 @@ button {
   height: 100%;
   overflow: hidden;
   background: transparent;
+  touch-action: none; /* 手势由 JS 接管，禁止宿主滚动/缩放抢走 */
+  user-select: none;
 }
 .map-canvas {
   position: absolute;

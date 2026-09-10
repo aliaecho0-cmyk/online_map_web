@@ -43,7 +43,7 @@ class EventDetailPage {
           <div class="section-title">活动介绍</div>
           <div class="desc">${escapeHtml(evt.desc)}</div>
         </div>
-        <button class="btn-primary go-btn">去现场（地图导航）</button>
+        <button class="btn-primary go-btn">去现场</button>
       </div>`;
 
     this.el.querySelector('.go-btn').addEventListener('click', () => this.onGoScene(evt));

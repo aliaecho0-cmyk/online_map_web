@@ -22,6 +22,9 @@ const CAT_KEY_MAP = {
 
 const STATUS_TEXT = { open: '营业中', break: '休息中', closed: '已收摊' };
 
+/** 聚焦某个摊位时的缩放：约 6 格可见 */
+const FOCUS_SCALE = 1.9;
+
 function h(tag, cls, html) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -326,7 +329,7 @@ class MapPage {
     this.searchPanel.innerHTML = '';
     this.map.setHighlightedId(id);
     const c = this.map;
-    c.focusMapPoint(booth.mapX, booth.mapY, 1.3).then(() => {
+    c.focusMapPoint(booth.mapX, booth.mapY, FOCUS_SCALE).then(() => {
       const rect = c.getBoothLocalCenter(id);
       if (rect) this.showCallout(booth, rect.x, rect.y);
     });
@@ -378,7 +381,7 @@ class MapPage {
   focusBooth(b) {
     this.map.setHighlightedId(b.id);
     const c = this.map;
-    c.focusMapPoint(b.mapX, b.mapY, 1.15).then(() => {
+    c.focusMapPoint(b.mapX, b.mapY, FOCUS_SCALE).then(() => {
       const rect = c.getBoothLocalCenter(b.id);
       if (rect) this.showCallout(b, rect.x, rect.y);
     });
