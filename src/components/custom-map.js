@@ -2,7 +2,7 @@
  * components/custom-map.js — 30×30 格栅化校园地图（web 版，由小程序 Component 重写为 class）
  *
  * 与原组件保持一致的坐标/手势/绘制逻辑：
- * - map-painter 统一绘制像素地形与建筑，historical-map-svg 保留语义底图。
+ * - map-painter 绘制参考模板底图，historical-map-svg 作为加载失败时的回退。
  * - 缩放/平移只通过 canvas 元素的 CSS transform 实现，位图整体缩放。
  * - 手势：触摸事件（非 passive + preventDefault，从宿主 WebView 手里抢回手势）
  *   与鼠标事件分两路；滚轮平移，Ctrl/⌘+滚轮缩放。
@@ -11,7 +11,7 @@
 import * as canvasMap from '../utils/canvas-map.js';
 import SVG_BASE_FALLBACK from './historical-map-svg.js';
 import renderSVG from './svg-canvas-renderer.js';
-import { createMapPainter, MAP_PIXEL_SIZE } from './map-painter.js';
+import { createMapPainter, MAP_IMAGE_WIDTH, MAP_IMAGE_HEIGHT } from './map-painter.js';
 
 const MAP_WIDTH = canvasMap.GRID_COLS * canvasMap.CELL_PX;
 const MAP_HEIGHT = canvasMap.GRID_ROWS * canvasMap.CELL_PX;
@@ -58,7 +58,7 @@ export class CustomMap {
     this._baseCtx = null;
     this._baseDrawn = false;
     this._svgString = SVG_BASE_FALLBACK;
-    this._painter = createMapPainter();
+    this._painter = null;
 
     // 手势运行时
     this._gesture = null;
@@ -80,9 +80,7 @@ export class CustomMap {
     // 地图就绪后即可响应页面聚焦。
     this._initCanvasSync();
     this._bindGestures();
-    this._renderBaseToOffscreen();
-    this._baseDrawn = true;
-    this._drawAll();
+    this._loadPainter();
   }
 
   /** 更新摊位列表（数据变化时重绘，缩放/平移不重绘） */
@@ -124,11 +122,10 @@ export class CustomMap {
     // 离屏 canvas 一次性渲染底图
     try {
       const off = document.createElement('canvas');
-      off.width = MAP_PIXEL_SIZE;
-      off.height = MAP_PIXEL_SIZE;
+      off.width = MAP_IMAGE_WIDTH;
+      off.height = MAP_IMAGE_HEIGHT;
       const offCtx = off.getContext('2d');
-      // 原生像素尺寸绘制，再以最近邻放大，避免 1.5 倍栅格产生半像素模糊。
-      offCtx.scale(MAP_PIXEL_SIZE / MAP_WIDTH, MAP_PIXEL_SIZE / MAP_HEIGHT);
+      offCtx.scale(MAP_IMAGE_WIDTH / MAP_WIDTH, MAP_IMAGE_HEIGHT / MAP_HEIGHT);
       this._baseCanvas = off;
       this._baseCtx = offCtx;
     } catch (err) {
@@ -142,13 +139,23 @@ export class CustomMap {
     this._refreshFont();
   }
 
+  async _loadPainter() {
+    try {
+      this._painter = await createMapPainter();
+      this._renderBaseToOffscreen();
+      this._baseDrawn = true;
+      this._drawAll();
+    } catch (err) {
+      console.warn('[custom-map] 地图参考模板加载失败，使用语义底图', err);
+    }
+  }
+
   /** 像素字体就绪后补一次重绘（canvas 不会自己重排已经画上去的文字） */
   _refreshFont() {
     const fonts = document.fonts;
     if (!fonts || typeof fonts.load !== 'function') return;
     fonts.load('18px "px-cjk"', '0123456789社联兑奖点一瓯茶草坪图书馆').then(
       () => {
-        this._renderBaseToOffscreen();
         this._drawAll();
       },
       () => {}
@@ -494,7 +501,11 @@ export class CustomMap {
   _drawBaseMap(ctx) {
     // _baseDrawn 之前离屏画布还是空白，直接画上去会让地图整个空掉
     if (this._baseCanvas && this._baseDrawn) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(this._baseCanvas, 0, 0, MAP_WIDTH, MAP_HEIGHT);
+      ctx.restore();
       return;
     }
     const svg = this._svgString;
@@ -510,25 +521,35 @@ export class CustomMap {
     ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
   }
 
-  /** 每格摊位号：米白描边 + 深紫填充，任何底色上都看得清。画在最上层。 */
+  /** 用真实数据重绘像素号码牌，覆盖参考图中可能失真的图片文字。 */
   _drawBoothNumbers(ctx) {
     if (!this._booths.length) return;
     const cellPx = canvasMap.CELL_PX;
     ctx.save();
     // 状态会被上一个绘制函数残留，这里全部显式设定
-    ctx.font = '18px "px-cjk", sans-serif';
+    ctx.font = '16px "px-cjk", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round';
-    ctx.miterLimit = 2;
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#f5efd9';
-    ctx.fillStyle = '#594661';
     for (const b of this._booths) {
-      const x = b.mapX * cellPx;
-      const y = b.mapY * cellPx + 3;
-      ctx.strokeText(b.id, x, y);
-      ctx.fillText(b.id, x, y);
+      const x = Math.floor(b.mapX) * cellPx;
+      const y = Math.floor(b.mapY) * cellPx;
+      // 右下硬阴影、木框、羊皮纸面与青绿色棚檐沿用参考图的摊位语言。
+      ctx.fillStyle = '#39284c';
+      ctx.fillRect(x + 6, y + 6, 27, 27);
+      ctx.fillStyle = '#6c4660';
+      ctx.fillRect(x + 3, y + 3, 27, 27);
+      ctx.fillStyle = '#d99d83';
+      ctx.fillRect(x + 5, y + 5, 23, 23);
+      ctx.fillStyle = '#f1c8ad';
+      ctx.fillRect(x + 7, y + 8, 19, 18);
+      ctx.fillStyle = '#437f73';
+      ctx.fillRect(x + 6, y + 5, 21, 4);
+      ctx.fillStyle = '#78aaa0';
+      ctx.fillRect(x + 8, y + 5, 17, 2);
+      ctx.fillStyle = '#fff0cf';
+      ctx.fillRect(x + 8, y + 10, 17, 2);
+      ctx.fillStyle = '#49314f';
+      ctx.fillText(b.id, x + cellPx / 2, y + cellPx / 2 + 4);
     }
     ctx.restore();
   }
