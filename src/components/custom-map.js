@@ -23,6 +23,27 @@ const CLAMP_MARGIN = 80;
 const DEFAULT_VIEW_CELLS_X = 17;
 const DEFAULT_FOCUS_CENTER = { x: 11, y: 14 };
 
+/* 参考位图的摊位并非严格等距，按钮按实测中心绘制，避免越往下偏差越大。 */
+const BOOTH_COLUMN_CENTERS = {
+  0: 15, 1: 50, 2: 90, 3: 128, 4: 160, 5: 198, 6: 238, 7: 273, 8: 308, 9: 344,
+  10: 379, 11: 414, 12: 450, 13: 485, 14: 521, 15: 563, 16: 600, 17: 635, 19: 697,
+};
+
+const BOOTH_ROW_CENTERS = {
+  1: 57, 3: 126, 4: 168, 5: 203, 6: 238, 7: 274, 8: 308, 9: 344, 10: 380,
+  11: 414, 13: 488, 14: 527, 15: 564, 16: 603, 17: 640, 18: 679, 19: 716,
+  20: 755, 21: 788, 23: 864, 25: 932, 26: 968, 27: 1005,
+};
+
+function getBoothRenderPoint(booth) {
+  const column = Math.floor(booth.mapX);
+  const row = Math.floor(booth.mapY);
+  return {
+    x: BOOTH_COLUMN_CENTERS[column] ?? booth.mapX * canvasMap.CELL_PX,
+    y: BOOTH_ROW_CENTERS[row] ?? booth.mapY * canvasMap.CELL_PX,
+  };
+}
+
 function getDefaultFocus(width, height) {
   const cellsY = DEFAULT_VIEW_CELLS_X * (height / width);
   return {
@@ -387,8 +408,9 @@ export class CustomMap {
       return;
     }
     const booth = this._booths.find((b) => b.id === hitId);
-    const mx = booth ? booth.mapX : mapX;
-    const my = booth ? booth.mapY : mapY;
+    const point = booth ? getBoothRenderPoint(booth) : null;
+    const mx = point ? point.x / canvasMap.CELL_PX : mapX;
+    const my = point ? point.y / canvasMap.CELL_PX : mapY;
     this._onBoothTap({
       id: hitId,
       x: mx * canvasMap.CELL_PX * vp.scale + vp.x,
@@ -397,9 +419,12 @@ export class CustomMap {
   }
 
   _hitTest(mapX, mapY) {
-    const cx = Math.floor(mapX);
-    const cy = Math.floor(mapY);
-    const booth = this._booths.find((item) => Math.floor(item.mapX) === cx && Math.floor(item.mapY) === cy);
+    const px = mapX * canvasMap.CELL_PX;
+    const py = mapY * canvasMap.CELL_PX;
+    const booth = this._booths.find((item) => {
+      const point = getBoothRenderPoint(item);
+      return Math.abs(point.x - px) <= 19 && Math.abs(point.y - py) <= 19;
+    });
     return booth ? booth.id : null;
   }
 
@@ -505,6 +530,8 @@ export class CustomMap {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(this._baseCanvas, 0, 0, MAP_WIDTH, MAP_HEIGHT);
+      // 底图左侧额外烘焙了一枚 9 号牌；以紧邻的林地纹理覆盖，保留数据中的正式 9 号。
+      ctx.drawImage(this._baseCanvas, 0, 488, 44, 58, 32, 423, 38, 51);
       ctx.restore();
       return;
     }
@@ -531,25 +558,26 @@ export class CustomMap {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (const b of this._booths) {
-      const x = Math.floor(b.mapX) * cellPx;
-      const y = Math.floor(b.mapY) * cellPx;
+      const point = getBoothRenderPoint(b);
+      const x = Math.round(point.x - 17);
+      const y = Math.round(point.y - 17);
       // 右下硬阴影、木框、羊皮纸面与青绿色棚檐沿用参考图的摊位语言。
       ctx.fillStyle = '#39284c';
-      ctx.fillRect(x + 6, y + 6, 27, 27);
+      ctx.fillRect(x + 4, y + 5, 33, 33);
       ctx.fillStyle = '#6c4660';
-      ctx.fillRect(x + 3, y + 3, 27, 27);
+      ctx.fillRect(x + 1, y + 2, 34, 34);
       ctx.fillStyle = '#d99d83';
-      ctx.fillRect(x + 5, y + 5, 23, 23);
+      ctx.fillRect(x + 3, y + 4, 30, 30);
       ctx.fillStyle = '#f1c8ad';
-      ctx.fillRect(x + 7, y + 8, 19, 18);
+      ctx.fillRect(x + 5, y + 8, 26, 24);
       ctx.fillStyle = '#437f73';
-      ctx.fillRect(x + 6, y + 5, 21, 4);
+      ctx.fillRect(x + 4, y + 3, 28, 6);
       ctx.fillStyle = '#78aaa0';
-      ctx.fillRect(x + 8, y + 5, 17, 2);
+      ctx.fillRect(x + 7, y + 3, 22, 2);
       ctx.fillStyle = '#fff0cf';
-      ctx.fillRect(x + 8, y + 10, 17, 2);
+      ctx.fillRect(x + 6, y + 10, 24, 2);
       ctx.fillStyle = '#49314f';
-      ctx.fillText(b.id, x + cellPx / 2, y + cellPx / 2 + 4);
+      ctx.fillText(b.id, point.x, point.y + 4);
     }
     ctx.restore();
   }
@@ -560,8 +588,9 @@ export class CustomMap {
     const cellPx = canvasMap.CELL_PX;
     const booth = this._booths.find((item) => item.id === hl);
     if (!booth) return;
-    const x = Math.floor(booth.mapX) * cellPx;
-    const y = Math.floor(booth.mapY) * cellPx;
+    const point = getBoothRenderPoint(booth);
+    const x = point.x - cellPx / 2;
+    const y = point.y - cellPx / 2;
     ctx.save();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
     ctx.fillRect(x + 2, y + 2, cellPx - 4, cellPx - 4);
@@ -617,16 +646,25 @@ export class CustomMap {
   getBoothScreenRect(id) {
     const b = this._booths.find((x) => x.id === id);
     if (!b) return null;
-    return this.getPointScreenRect(b.mapX, b.mapY, 0.55);
+    const point = getBoothRenderPoint(b);
+    return this.getPointScreenRect(point.x / canvasMap.CELL_PX, point.y / canvasMap.CELL_PX, 0.55);
+  }
+
+  getBoothMapPoint(id) {
+    const booth = this._booths.find((item) => item.id === id);
+    if (!booth) return null;
+    const point = getBoothRenderPoint(booth);
+    return { x: point.x / canvasMap.CELL_PX, y: point.y / canvasMap.CELL_PX };
   }
 
   getBoothLocalCenter(id) {
     const b = this._booths.find((x) => x.id === id);
     if (!b) return null;
     const vp = this._viewport || { scale: 1, x: 0, y: 0 };
+    const point = getBoothRenderPoint(b);
     return {
-      x: b.mapX * canvasMap.CELL_PX * vp.scale + vp.x,
-      y: b.mapY * canvasMap.CELL_PX * vp.scale + vp.y,
+      x: point.x * vp.scale + vp.x,
+      y: point.y * vp.scale + vp.y,
     };
   }
 

@@ -329,7 +329,8 @@ class MapPage {
     this.searchPanel.innerHTML = '';
     this.map.setHighlightedId(id);
     const c = this.map;
-    c.focusMapPoint(booth.mapX, booth.mapY, FOCUS_SCALE).then(() => {
+    const point = c.getBoothMapPoint(id) || { x: booth.mapX, y: booth.mapY };
+    c.focusMapPoint(point.x, point.y, FOCUS_SCALE).then(() => {
       const rect = c.getBoothLocalCenter(id);
       if (rect) this.showCallout(booth, rect.x, rect.y);
     });
@@ -381,7 +382,8 @@ class MapPage {
   focusBooth(b) {
     this.map.setHighlightedId(b.id);
     const c = this.map;
-    c.focusMapPoint(b.mapX, b.mapY, FOCUS_SCALE).then(() => {
+    const point = c.getBoothMapPoint(b.id) || { x: b.mapX, y: b.mapY };
+    c.focusMapPoint(point.x, point.y, FOCUS_SCALE).then(() => {
       const rect = c.getBoothLocalCenter(b.id);
       if (rect) this.showCallout(b, rect.x, rect.y);
     });
@@ -531,7 +533,8 @@ class MapPage {
     const c = this.map;
     const b = this._resolveExampleBooth();
     if (!c || !b) return Promise.resolve();
-    return c.focusMapPoint(b.mapX, b.mapY, 1.15);
+    const point = c.getBoothMapPoint(b.id) || { x: b.mapX, y: b.mapY };
+    return c.focusMapPoint(point.x, point.y, 1.15);
   }
 
   onTutorialNext() {
