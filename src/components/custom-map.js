@@ -175,7 +175,7 @@ export class CustomMap {
   _refreshFont() {
     const fonts = document.fonts;
     if (!fonts || typeof fonts.load !== 'function') return;
-    fonts.load('18px "px-cjk"', '0123456789社联兑奖点一瓯茶草坪图书馆').then(
+    fonts.load('18px "px-cjk"', '0123456789社联兑奖点一鸥茶草坪图书馆').then(
       () => {
         this._drawAll();
       },
@@ -489,6 +489,7 @@ export class CustomMap {
     ctx.clearRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
     this._drawBaseMap(ctx);
     this._drawPrizePointLabel(ctx);
+    this._drawTeaShopLabel(ctx);
     this._drawBooths(ctx);
     this._drawRegionHighlight(ctx);
     this._drawBoothNumbers(ctx);
@@ -533,6 +534,8 @@ export class CustomMap {
       ctx.drawImage(this._baseCanvas, 0, 0, MAP_WIDTH, MAP_HEIGHT);
       // 底图左侧额外烘焙了一枚 9 号牌；以紧邻的林地纹理覆盖，保留数据中的正式 9 号。
       ctx.drawImage(this._baseCanvas, 0, 488, 44, 58, 32, 423, 38, 51);
+      // 24 号上方残留的旧 25 号牌已不属于最新规划，用同一底图的草地纹理补齐。
+      ctx.drawImage(this._baseCanvas, 399, 596, 44, 64, 109, 610, 40, 56);
       ctx.restore();
       return;
     }
@@ -567,6 +570,26 @@ export class CustomMap {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('社联兑奖点', 124, 56);
+    ctx.restore();
+  }
+
+  /** 覆盖参考图中的旧茶店名，保持原木牌造型。 */
+  _drawTeaShopLabel(ctx) {
+    ctx.save();
+    ctx.fillStyle = '#f1c8ad';
+    ctx.fillRect(708, 954, 72, 25);
+    ctx.fillStyle = '#fff0cf';
+    ctx.fillRect(710, 955, 68, 2);
+    ctx.fillStyle = '#9e6a66';
+    ctx.fillRect(712, 959, 2, 2);
+    ctx.fillRect(775, 959, 2, 2);
+    ctx.fillRect(712, 974, 2, 2);
+    ctx.fillRect(775, 974, 2, 2);
+    ctx.fillStyle = '#49314f';
+    ctx.font = '16px "px-cjk", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('一鸥茶', 744, 968);
     ctx.restore();
   }
 
