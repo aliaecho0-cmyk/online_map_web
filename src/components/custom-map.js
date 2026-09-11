@@ -488,6 +488,7 @@ export class CustomMap {
     if (!ctx) return;
     ctx.clearRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
     this._drawBaseMap(ctx);
+    this._drawPrizePointLabel(ctx);
     this._drawBooths(ctx);
     this._drawRegionHighlight(ctx);
     this._drawBoothNumbers(ctx);
@@ -546,6 +547,27 @@ export class CustomMap {
     }
     ctx.fillStyle = '#f0f2ec';
     ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+  }
+
+  /** 覆盖底图旧字，确保左上角服务地标始终显示正式名称。 */
+  _drawPrizePointLabel(ctx) {
+    ctx.save();
+    ctx.fillStyle = '#39284c';
+    ctx.fillRect(71, 43, 112, 30);
+    ctx.fillStyle = '#6c4660';
+    ctx.fillRect(68, 40, 112, 30);
+    ctx.fillStyle = '#d99d83';
+    ctx.fillRect(71, 43, 106, 24);
+    ctx.fillStyle = '#f1c8ad';
+    ctx.fillRect(74, 46, 100, 18);
+    ctx.fillStyle = '#fff0cf';
+    ctx.fillRect(75, 46, 98, 2);
+    ctx.fillStyle = '#49314f';
+    ctx.font = '16px "px-cjk", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('社联兑奖点', 124, 56);
+    ctx.restore();
   }
 
   /** 用真实数据重绘像素号码牌，覆盖参考图中可能失真的图片文字。 */
