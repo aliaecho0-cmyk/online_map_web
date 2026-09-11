@@ -101,6 +101,7 @@
   --z-tut: 9999;
   --z-toast: 10000;
   --z-modal: 10001;
+  --z-startup: 11000;
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
 
