@@ -7,6 +7,8 @@
  *   - 内容区（步骤数字/文案/下一步按钮，每步 show 时重建）
  * 顶部常驻「跳过」按钮，保证教程永远可退出。
  */
+import { t } from '../i18n.js';
+
 export class MapTutorial {
   constructor(overlayEl) {
     this.overlay = overlayEl;
@@ -27,7 +29,7 @@ export class MapTutorial {
 
     this._skipBtn = document.createElement('button');
     this._skipBtn.className = 'tut-skip';
-    this._skipBtn.textContent = '跳过';
+    this._skipBtn.textContent = t('skip');
     this._skipBtn.addEventListener('click', () => this.onSkip());
     this.root.appendChild(this._skipBtn);
   }
@@ -38,6 +40,10 @@ export class MapTutorial {
 
   setOnSkip(fn) {
     this.onSkip = fn;
+  }
+
+  setLanguage() {
+    this._skipBtn.textContent = t('skip');
   }
 
   _bbox(rects) {

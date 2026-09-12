@@ -10,6 +10,7 @@ import clubsPage from './pages/clubs.js';
 import eventsPage from './pages/events.js';
 import clubDetailPage from './pages/club-detail.js';
 import eventDetailPage from './pages/event-detail.js';
+import { t } from './i18n.js';
 
 const headerEl = document.getElementById('header');
 const pageEl = document.getElementById('page');
@@ -71,10 +72,11 @@ function render() {
   if (isTab) {
     headerEl.style.display = 'none';
     tabbarEl.style.display = '';
+    tabbar.render();
     tabbar.setSelected(tab.index);
   } else {
     headerEl.style.display = '';
-    headerEl.querySelector('.header-title').textContent = mod.title || '';
+    headerEl.querySelector('.header-title').textContent = typeof mod.title === 'function' ? mod.title() : (mod.title || '');
     tabbarEl.style.display = 'none';
   }
 
@@ -93,4 +95,10 @@ export function start() {
 
   window.addEventListener('hashchange', render);
   render();
+}
+
+export function refresh() {
+  state.tutorial?.setLanguage?.();
+  render();
+  document.title = t('appTitle');
 }

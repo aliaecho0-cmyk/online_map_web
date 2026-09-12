@@ -12,6 +12,7 @@ import * as canvasMap from '../utils/canvas-map.js';
 import SVG_BASE_FALLBACK from './historical-map-svg.js';
 import renderSVG from './svg-canvas-renderer.js';
 import { createMapPainter, MAP_IMAGE_WIDTH, MAP_IMAGE_HEIGHT } from './map-painter.js';
+import booth8HighlightSrc from '../../地图相关素材/按钮8.png';
 
 const MAP_WIDTH = canvasMap.GRID_COLS * canvasMap.CELL_PX;
 const MAP_HEIGHT = canvasMap.GRID_ROWS * canvasMap.CELL_PX;
@@ -80,6 +81,10 @@ export class CustomMap {
     this._baseDrawn = false;
     this._svgString = SVG_BASE_FALLBACK;
     this._painter = null;
+    this._booth8Highlight = null;
+    this._booth8Flash = false;
+    this._booth8Timer = 0;
+    this._destroyed = false;
 
     // 手势运行时
     this._gesture = null;
@@ -102,6 +107,23 @@ export class CustomMap {
     this._initCanvasSync();
     this._bindGestures();
     this._loadPainter();
+    this._loadBooth8Highlight();
+  }
+
+  _loadBooth8Highlight() {
+    const image = new Image();
+    image.onload = () => {
+      if (this._destroyed) return;
+      this._booth8Highlight = image;
+      this._booth8Flash = true;
+      this._drawAll();
+      this._booth8Timer = window.setInterval(() => {
+        this._booth8Flash = !this._booth8Flash;
+        this._drawAll();
+      }, 650);
+    };
+    image.onerror = () => {};
+    image.src = booth8HighlightSrc;
   }
 
   /** 更新摊位列表（数据变化时重绘，缩放/平移不重绘） */
@@ -604,6 +626,14 @@ export class CustomMap {
     ctx.textBaseline = 'middle';
     for (const b of this._booths) {
       const point = getBoothRenderPoint(b);
+      if (b.id === '8' && this._booth8Flash && this._booth8Highlight) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(this._booth8Highlight, point.x - 29, point.y - 23, 58, 46);
+        ctx.restore();
+        continue;
+      }
       const x = Math.round(point.x - 17);
       const y = Math.round(point.y - 17);
       // 右下硬阴影、木框、羊皮纸面与青绿色棚檐沿用参考图的摊位语言。
@@ -722,6 +752,7 @@ export class CustomMap {
   }
 
   destroy() {
+    this._destroyed = true;
     const h = this._h;
     if (h) {
       const root = this.root;
@@ -737,6 +768,7 @@ export class CustomMap {
     }
     window.removeEventListener('resize', this._onResize);
     clearTimeout(this._moveTimer);
+    clearInterval(this._booth8Timer);
     this._gesture = null;
     this._mouseDown = false;
   }
