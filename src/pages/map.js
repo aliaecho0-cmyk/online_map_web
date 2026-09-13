@@ -129,8 +129,16 @@ class MapPage {
     this.allBooths = [];
     if (state.tutorial) {
       state.tutorial.setOnNext(() => this.onTutorialNext());
+      state.tutorial.setOnPrevious(() => this.onTutorialPrevious());
       state.tutorial.setOnSkip(() => this.onSkipTutorial());
     }
+    this._tutorialResizeTimer = null;
+    this._onTutorialResize = () => {
+      if (!this._tutorialActive) return;
+      clearTimeout(this._tutorialResizeTimer);
+      this._tutorialResizeTimer = setTimeout(() => this._refreshTutorialHighlight(), 120);
+    };
+    window.addEventListener('resize', this._onTutorialResize);
 
     // 占位符打字机（聚焦时暂停，减少动态时跳过）
     this._typeTimer = null;
@@ -450,7 +458,6 @@ class MapPage {
       const rect = c.getBoothLocalCenter(id);
       if (rect) this.showCallout(booth, rect.x, rect.y);
     });
-    setTimeout(() => this.map.setHighlightedId(''), 4000);
   }
 
   onSearchMaskTap() {
@@ -503,17 +510,17 @@ class MapPage {
       const rect = c.getBoothLocalCenter(b.id);
       if (rect) this.showCallout(b, rect.x, rect.y);
     });
-    setTimeout(() => this.map.setHighlightedId(''), 3000);
   }
 
   /* ---------- 新手指引 ---------- */
   maybeStartTutorial() {
-    if (state.tutorialLaunched) return;
+    const forceStart = !!state.pendingOnboarding;
+    if (state.tutorialLaunched && !forceStart) return;
     if (!state.entryReady) {
       this._mapReadyTimer = setTimeout(() => this.maybeStartTutorial(), 200);
       return;
     }
-    if (wx.getStorageSync(tut.TUTORIAL_KEY)) {
+    if (!forceStart && wx.getStorageSync(tut.TUTORIAL_KEY)) {
       state.tutorialLaunched = true;
       return;
     }
@@ -525,11 +532,19 @@ class MapPage {
       this._mapReadyTimer = setTimeout(() => this.maybeStartTutorial(), 150);
       return;
     }
+    state.pendingOnboarding = false;
     state.tutorialLaunched = true;
-    this._startTutorial();
+    this.startOnboarding();
   }
 
-  _startTutorial() {
+  startOnboarding() {
+    clearTimeout(this._mapReadyTimer);
+    state.pendingOnboarding = false;
+    state.tutorialLaunched = true;
+    if (this._tutorialActive) state.tutorial?.hide({ animated: false });
+    if (this.callout?.style.display !== 'none') this.onCalloutClose();
+    this._tutorialSteps = tut.getSteps();
+    this._tutStepShown = false;
     this._tutorialActive = true;
     this._applyStep(0);
   }
@@ -546,11 +561,10 @@ class MapPage {
     const content = {
       stepNumber: index + 1,
       totalSteps: this._tutorialSteps.length,
+      title: step.title,
       message: step.message,
-      buttonText: step.button,
     };
-    // 第一步：只显示暗色蒙层，等高亮算好再显示解释框（直接落在正确位置，一步到位）；
-    // 后续步：只更新文案、解释框停在上一位置
+    // 第一步先淡入遮罩，目标测量完成后再出现对话框；后续步骤复用同一节点平滑移动。
     if (!this._tutStepShown) {
       state.tutorial.showMask();
     } else {
@@ -561,7 +575,6 @@ class MapPage {
       .then((rects) => {
         if (!this._tutorialActive || this._curStepIndex !== index) return;
         if (!this._tutStepShown) {
-          // 第一步：高亮算好后一次性显示框 + 高亮，框直接出现在正确位置
           state.tutorial.show({ ...content, highlightRects: rects || [] });
           this._tutStepShown = true;
         } else {
@@ -573,57 +586,27 @@ class MapPage {
 
   _computeHighlight(step) {
     const c = this.map;
-    const tabIdx = { tabMap: 0, tabClub: 1, tabActivity: 2 }[step.target];
+    const tabIdx = { tabClub: 1, tabActivity: 2 }[step.target];
     if (tabIdx !== undefined) {
       const rects = state.tabbar ? state.tabbar.getButtonRects() : [];
       const r = rects[tabIdx];
-      if (r) return Promise.resolve([{ left: r.left, top: r.top, width: r.width, height: r.height, shape: 'round', rx: 12 }]);
+      if (r) return Promise.resolve([{ left: r.left, top: r.top, width: r.width, height: r.height, shape: 'rect', rx: 0 }]);
       return Promise.resolve([]);
     }
     switch (step.target) {
-      case 'socialUnion': {
-        if (!c) return Promise.resolve([]);
-        return c.focusMapPoint(tut.SOCIAL_UNION.mapX, tut.SOCIAL_UNION.mapY, 1.15).then(
-          () =>
-            new Promise((res) => {
-              setTimeout(() => {
-                const r = c.getPointScreenRect(tut.SOCIAL_UNION.mapX, tut.SOCIAL_UNION.mapY, 1.0);
-                r.left -= r.width / 2;
-                r.width *= 2; // 社联是一座完整的 4×2 格展台。
-                res(this._pack([this._toRect(r, 'round')]));
-              }, 500);
-            })
-        );
-      }
       case 'clubMarker': {
         if (!c) return Promise.resolve([]);
-        return this._focusExampleBooth().then(
-          () =>
-            new Promise((res) => {
-              setTimeout(() => {
-                const r = c.getBoothScreenRect(this._exampleBoothId);
-                res(this._pack([this._toRect(r, 'round')]));
-              }, 500);
-            })
-        );
-      }
-      case 'clubPopup': {
-        if (!c) return Promise.resolve([]);
         const booth = this._resolveExampleBooth();
-        const local = c.getBoothLocalCenter(this._exampleBoothId);
-        if (booth && local) this.showCallout(booth, local.x, local.y);
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            const rects = [];
-            const marker = c.getBoothScreenRect(this._exampleBoothId);
-            if (marker) rects.push(this._toRect(marker, 'round'));
-            const rc = this.el.querySelector('#clubCallout').getBoundingClientRect();
-            if (rc && this.callout.style.display !== 'none') {
-              rects.push({ left: rc.left, top: rc.top, width: rc.width, height: rc.height, shape: 'round', rx: 16 });
-            }
-            resolve(this._pack(rects));
-          }, 70);
-        });
+        const r = booth ? c.getBoothScreenRect(booth.id) : null;
+        return Promise.resolve(this._pack([this._toRect(r, 'rect')]));
+      }
+      case 'musicPlayer': {
+        const el = this.el.querySelector('.record-player-slot');
+        return Promise.resolve(this._pack([this._elementRect(el)]));
+      }
+      case 'searchField': {
+        const el = this.el.querySelector('.search-field');
+        return Promise.resolve(this._pack([this._elementRect(el)]));
       }
       default:
         return Promise.resolve([]);
@@ -632,8 +615,14 @@ class MapPage {
 
   _toRect(r, shape) {
     if (!r) return null;
-    const rx = shape === 'circle' ? Math.min(r.width, r.height) / 2 : 14;
+    const rx = shape === 'circle' ? Math.min(r.width, r.height) / 2 : 0;
     return { left: r.left, top: r.top, width: r.width, height: r.height, shape, rx };
+  }
+
+  _elementRect(element) {
+    if (!element) return null;
+    const r = element.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, height: r.height, shape: 'rect', rx: 0 };
   }
 
   _pack(arr) {
@@ -642,19 +631,42 @@ class MapPage {
 
   _resolveExampleBooth() {
     const list = this.allBooths || [];
-    let b = list.find((x) => x.id === this._exampleBoothId);
+    const c = this.map;
+    const mapRect = c?.getRect();
+    const isVisible = (booth) => {
+      const r = c?.getBoothScreenRect(booth.id);
+      if (!r || !mapRect) return false;
+      return r.cx > mapRect.left + 12
+        && r.cx < mapRect.right - 12
+        && r.cy > mapRect.top + 12
+        && r.cy < mapRect.bottom - 76;
+    };
+    let b = list.find((x) => x.id === this._exampleBoothId && isVisible(x));
+    if (!b && mapRect) {
+      const cx = mapRect.left + mapRect.width / 2;
+      const cy = mapRect.top + mapRect.height * 0.45;
+      b = list
+        .filter(isVisible)
+        .sort((a, d) => {
+          const ar = c.getBoothScreenRect(a.id);
+          const dr = c.getBoothScreenRect(d.id);
+          return Math.hypot(ar.cx - cx, ar.cy - cy) - Math.hypot(dr.cx - cx, dr.cy - cy);
+        })[0];
+    }
     if (!b && list.length) b = list[0];
     if (b) this._exampleBoothId = b.id;
     this._exampleBooth = b || null;
     return b || null;
   }
 
-  _focusExampleBooth() {
-    const c = this.map;
-    const b = this._resolveExampleBooth();
-    if (!c || !b) return Promise.resolve();
-    const point = c.getBoothMapPoint(b.id) || { x: b.mapX, y: b.mapY };
-    return c.focusMapPoint(point.x, point.y, 1.15);
+  _refreshTutorialHighlight() {
+    const step = this._curStep;
+    const index = this._curStepIndex;
+    if (!this._tutorialActive || !step) return;
+    this._computeHighlight(step).then((rects) => {
+      if (!this._tutorialActive || this._curStepIndex !== index) return;
+      state.tutorial?.updateRects(rects || []);
+    });
   }
 
   onTutorialNext() {
@@ -663,13 +675,6 @@ class MapPage {
     if (now - (this._lastAdvance || 0) < 300) return; // 防连点跳步
     this._lastAdvance = now;
     const idx = this._curStepIndex;
-    const step = this._tutorialSteps[idx];
-    if (!step) return;
-    if (step.key === tut.STATE.CLUB_POPUP) {
-      this.onCalloutClose();
-      this._applyStep(idx + 1);
-      return;
-    }
     if (idx >= this._tutorialSteps.length - 1) {
       this._completeTutorial();
       return;
@@ -677,22 +682,29 @@ class MapPage {
     this._applyStep(idx + 1);
   }
 
+  onTutorialPrevious() {
+    if (!this._tutorialActive || this._curStepIndex <= 0) return;
+    this._applyStep(this._curStepIndex - 1);
+  }
+
   onSkipTutorial() {
     this._completeTutorial();
   }
 
-  _completeTutorial() {
+  async _completeTutorial() {
+    if (!this._tutorialActive) return;
     this._tutorialActive = false;
-    if (state.tutorial) state.tutorial.hide();
-    this.onCalloutClose();
-    this.map.fitView();
-    wx.setStorageSync(tut.TUTORIAL_KEY, '1');
+    clearTimeout(this._tutorialResizeTimer);
+    if (state.tutorial) await state.tutorial.hide();
+    this.map?.setHighlightedId('');
+    wx.setStorageSync(tut.TUTORIAL_KEY, 'true');
   }
 
   _resetTutorialState() {
     this._tutorialActive = false;
     clearTimeout(this._mapReadyTimer);
-    if (state.tutorial) state.tutorial.hide();
+    clearTimeout(this._tutorialResizeTimer);
+    if (state.tutorial) state.tutorial.hide({ animated: false });
   }
 
   destroy() {
@@ -701,6 +713,7 @@ class MapPage {
     clearTimeout(this._typeTimer);
     clearTimeout(this._emailHoldTimer);
     clearTimeout(this._emailCopyHideTimer);
+    window.removeEventListener('resize', this._onTutorialResize);
     this._resetTutorialState();
     if (this.map) this.map.destroy();
     if (this.recordPlayer) this.recordPlayer.destroy();

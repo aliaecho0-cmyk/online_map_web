@@ -1,6 +1,6 @@
 import './styles/app.css';
 import './styles/motion.css';
-import { start, refresh } from './router.js';
+import { start, refresh, startOnboarding } from './router.js';
 import { mountStartupIntro } from './components/startup-intro.js';
 import { wx } from './adapter/wx.js';
 import * as announcementService from './services/announcement.js';
@@ -35,6 +35,7 @@ async function showEntryAnnouncement() {
 }
 
 const startupIntro = mountStartupIntro();
+window.startOnboarding = startOnboarding;
 start();
 startupIntro.play()
   .then(chooseLanguage)

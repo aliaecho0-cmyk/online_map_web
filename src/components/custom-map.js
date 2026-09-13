@@ -71,6 +71,8 @@ export class CustomMap {
 
     this._booths = [];
     this._highlightedId = '';
+    this._highlightPhase = 0;
+    this._highlightTimer = 0;
     this._highlightRegion = null;
     this._viewport = { scale: 1, x: 0, y: 0 };
     this._rect = null;
@@ -134,6 +136,15 @@ export class CustomMap {
 
   setHighlightedId(id) {
     this._highlightedId = id || '';
+    this._highlightPhase = 0;
+    clearInterval(this._highlightTimer);
+    this._highlightTimer = 0;
+    if (this._highlightedId) {
+      this._highlightTimer = window.setInterval(() => {
+        this._highlightPhase = (this._highlightPhase + 1) % 4;
+        this._drawAll();
+      }, 280);
+    }
     this._drawAll();
   }
 
@@ -626,6 +637,10 @@ export class CustomMap {
     ctx.textBaseline = 'middle';
     for (const b of this._booths) {
       const point = getBoothRenderPoint(b);
+      if (b.id === this._highlightedId) {
+        this._drawHighlightedBoothNumber(ctx, b, point);
+        continue;
+      }
       if (b.id === '8' && this._booth8Flash && this._booth8Highlight) {
         ctx.save();
         ctx.imageSmoothingEnabled = true;
@@ -657,6 +672,51 @@ export class CustomMap {
     ctx.restore();
   }
 
+  /** 当前弹窗对应摊位：紫色明暗闪烁，并以固定像素颗粒模拟马赛克干扰。 */
+  _drawHighlightedBoothNumber(ctx, booth, point) {
+    const phase = this._highlightPhase;
+    const bright = phase % 2 === 0;
+    const x = Math.round(point.x - 17);
+    const y = Math.round(point.y - 17);
+    const seed = Number(booth.id) || 0;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = bright ? '#2b173d' : '#3c2056';
+    ctx.fillRect(x + 4, y + 5, 33, 33);
+    ctx.fillStyle = bright ? '#6b36a0' : '#4d2873';
+    ctx.fillRect(x + 1, y + 2, 34, 34);
+    ctx.fillStyle = bright ? '#a86ee0' : '#7544aa';
+    ctx.fillRect(x + 3, y + 4, 30, 30);
+    ctx.fillStyle = bright ? '#c79af0' : '#9666c8';
+    ctx.fillRect(x + 5, y + 8, 26, 24);
+    ctx.fillStyle = bright ? '#5a2b82' : '#44205f';
+    ctx.fillRect(x + 4, y + 3, 28, 6);
+    ctx.fillStyle = bright ? '#ead7ff' : '#b88add';
+    ctx.fillRect(x + 7, y + 3, 22, 2);
+
+    const pixels = bright
+      ? ['#e5c9ff', '#8e55c3', '#63308c']
+      : ['#b985df', '#6e399b', '#4d236d'];
+    for (let py = 0; py < 6; py += 1) {
+      for (let px = 0; px < 6; px += 1) {
+        if ((px * 7 + py * 3 + seed + phase * 2) % 5 !== 0) continue;
+        ctx.fillStyle = pixels[(px + py + phase) % pixels.length];
+        ctx.fillRect(x + 4 + px * 5, y + 4 + py * 5, 4, 4);
+      }
+    }
+
+    const glitch = phase < 2 ? 1 : -1;
+    ctx.fillStyle = bright ? '#f3e7ff' : '#dac2ef';
+    ctx.fillRect(x + 5 + glitch, y + 11, 25, 2);
+    ctx.fillRect(x + 7 - glitch, y + 29, 21, 2);
+    ctx.fillStyle = '#321542';
+    ctx.fillText(booth.id, point.x + 1, point.y + 5);
+    ctx.fillStyle = '#fff3ff';
+    ctx.fillText(booth.id, point.x, point.y + 4);
+    ctx.restore();
+  }
+
   _drawBooths(ctx) {
     const hl = this._highlightedId;
     if (!hl) return;
@@ -667,10 +727,11 @@ export class CustomMap {
     const x = point.x - cellPx / 2;
     const y = point.y - cellPx / 2;
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    const bright = this._highlightPhase % 2 === 0;
+    ctx.fillStyle = bright ? 'rgba(213, 175, 255, 0.34)' : 'rgba(127, 72, 179, 0.24)';
     ctx.fillRect(x + 2, y + 2, cellPx - 4, cellPx - 4);
-    ctx.strokeStyle = '#925cd1';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = bright ? '#d5a8ff' : '#7b42ad';
+    ctx.lineWidth = bright ? 4 : 2;
     ctx.strokeRect(x + 2, y + 2, cellPx - 4, cellPx - 4);
     ctx.restore();
   }
@@ -769,6 +830,7 @@ export class CustomMap {
     window.removeEventListener('resize', this._onResize);
     clearTimeout(this._moveTimer);
     clearInterval(this._booth8Timer);
+    clearInterval(this._highlightTimer);
     this._gesture = null;
     this._mouseDown = false;
   }

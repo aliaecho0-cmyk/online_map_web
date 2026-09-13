@@ -102,3 +102,16 @@ export function refresh() {
   render();
   document.title = t('appTitle');
 }
+
+/** 供未来帮助入口调用；无论是否完成过，都从首页第一步重新播放。 */
+export function startOnboarding() {
+  const { path } = parseHash();
+  state.tutorialLaunched = true;
+  if (path === '/map' && current?.startOnboarding) {
+    current.startOnboarding();
+    return;
+  }
+  state.pendingOnboarding = true;
+  if (path === '/map') render();
+  else location.hash = '#/map';
+}
