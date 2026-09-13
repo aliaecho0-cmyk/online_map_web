@@ -13,6 +13,10 @@ import SVG_BASE_FALLBACK from './historical-map-svg.js';
 import renderSVG from './svg-canvas-renderer.js';
 import { createMapPainter, MAP_IMAGE_WIDTH, MAP_IMAGE_HEIGHT } from './map-painter.js';
 import booth8HighlightSrc from '../../地图相关素材/按钮8.png';
+import npcUpLeftSrc from '../../人物素材/透明背景/up_left_foot_forward.png';
+import npcUpRightSrc from '../../人物素材/透明背景/up_right_foot_forward.png';
+import npcDownLeftSrc from '../../人物素材/透明背景/down_left_foot_forward.png';
+import npcDownRightSrc from '../../人物素材/透明背景/down_right_foot_forward.png';
 
 const MAP_WIDTH = canvasMap.GRID_COLS * canvasMap.CELL_PX;
 const MAP_HEIGHT = canvasMap.GRID_ROWS * canvasMap.CELL_PX;
@@ -23,6 +27,15 @@ const CLAMP_MARGIN = 80;
 
 const DEFAULT_VIEW_CELLS_X = 17;
 const DEFAULT_FOCUS_CENTER = { x: 11, y: 14 };
+
+/* 1–8 号与 15 号一列之间的石板路，x=105 为两列按钮净空区域的中心线。 */
+const NPC_ROUTE = { x: 105, top: 168, bottom: 414 };
+const NPC_SPEED = 24;
+const NPC_STEP_MS = 180;
+const NPC_FRAMES = {
+  up: [npcUpLeftSrc, npcUpRightSrc],
+  down: [npcDownLeftSrc, npcDownRightSrc],
+};
 
 /* 参考位图的摊位并非严格等距，按钮按实测中心绘制，避免越往下偏差越大。 */
 const BOOTH_COLUMN_CENTERS = {
@@ -86,6 +99,11 @@ export class CustomMap {
     this._booth8Highlight = null;
     this._booth8Flash = false;
     this._booth8Timer = 0;
+    this._npcLayer = null;
+    this._npc = null;
+    this._npcRaf = 0;
+    this._npcStartedAt = 0;
+    this._npcFrameKey = '';
     this._destroyed = false;
 
     // 手势运行时
@@ -107,9 +125,62 @@ export class CustomMap {
     // 尺寸/坐标/初始取景必须同步完成：页面在微任务里就会调 focusMapPoint，
     // 地图就绪后即可响应页面聚焦。
     this._initCanvasSync();
+    this._initNpc();
     this._bindGestures();
     this._loadPainter();
     this._loadBooth8Highlight();
+  }
+
+  _initNpc() {
+    const layer = document.createElement('div');
+    layer.className = 'map-npc-layer';
+    layer.style.width = `${MAP_WIDTH}px`;
+    layer.style.height = `${MAP_HEIGHT}px`;
+    const npc = document.createElement('img');
+    npc.className = 'map-npc';
+    npc.alt = '';
+    npc.setAttribute('aria-hidden', 'true');
+    npc.draggable = false;
+    layer.appendChild(npc);
+    this.root.appendChild(layer);
+    this._npcLayer = layer;
+    this._npc = npc;
+
+    Object.values(NPC_FRAMES).flat().forEach((src) => {
+      const image = new Image();
+      image.src = src;
+    });
+    this._apply(this._viewport);
+    this._npcStartedAt = performance.now();
+    this._tickNpc(this._npcStartedAt);
+  }
+
+  _tickNpc(now) {
+    if (this._destroyed || !this._npc) return;
+    const elapsed = Math.max(0, now - this._npcStartedAt);
+    const routeLength = NPC_ROUTE.bottom - NPC_ROUTE.top;
+    const roundTrip = routeLength * 2;
+    const distance = ((elapsed / 1000) * NPC_SPEED) % roundTrip;
+    const x = NPC_ROUTE.x;
+    let y = NPC_ROUTE.top;
+    let direction = 'down';
+
+    if (distance <= routeLength) {
+      y += distance;
+    } else {
+      y = NPC_ROUTE.bottom - (distance - routeLength);
+      direction = 'up';
+    }
+
+    const frame = Math.floor(elapsed / NPC_STEP_MS) % 2;
+    const frameKey = `${direction}-${frame}`;
+    if (frameKey !== this._npcFrameKey) {
+      this._npc.src = NPC_FRAMES[direction][frame];
+      this._npcFrameKey = frameKey;
+    }
+    this._npc.style.left = `${x}px`;
+    this._npc.style.top = `${y}px`;
+    this._npcRaf = requestAnimationFrame((time) => this._tickNpc(time));
   }
 
   _loadBooth8Highlight() {
@@ -472,6 +543,9 @@ export class CustomMap {
     }
     this._viewport = v;
     this.canvas.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.scale})`;
+    if (this._npcLayer) {
+      this._npcLayer.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.scale})`;
+    }
   }
 
   _fitInitial(rect) {
@@ -491,10 +565,12 @@ export class CustomMap {
       const s = scale != null ? scale : v.scale;
       this._viewport = { scale: s, x, y };
       this.canvas.classList.add('with-transition');
+      this._npcLayer?.classList.add('with-transition');
       this._apply({ scale: s, x, y });
       clearTimeout(this._moveTimer); // 连续两次聚焦时，别让上一个定时器提前摘掉过渡
       this._moveTimer = setTimeout(() => {
         this.canvas.classList.remove('with-transition');
+        this._npcLayer?.classList.remove('with-transition');
         resolve();
       }, 360);
     });
@@ -831,6 +907,7 @@ export class CustomMap {
     clearTimeout(this._moveTimer);
     clearInterval(this._booth8Timer);
     clearInterval(this._highlightTimer);
+    cancelAnimationFrame(this._npcRaf);
     this._gesture = null;
     this._mouseDown = false;
   }
