@@ -7,7 +7,7 @@ const UI = {
     map: '地图', clubs: '社团', events: '活动',
     searchClubs: '搜索社团', searchClubNames: '搜索社团名称', search: '搜索',
     clubBooths: '社团摊位', lawnPlaza: '草坪 / 广场', stonePath: '石板路',
-    clubIntro: '社团介绍', gameRules: '游戏规则', viewDetails: '查看详情',
+    clubIntro: '社团介绍', clubEmail: '社团邮箱', gameRules: '游戏规则', viewDetails: '查看详情',
     announcement: '公告', acknowledge: '知道了', booth: '摊位 {id}',
     boothStatus: '摊位 {id} · {status}', noSearchResults: '未找到匹配的社团',
     all: '全部', academic: '学术', tech: '科技', art: '艺术', sport: '体育', volunteer: '志愿',
@@ -22,14 +22,15 @@ const UI = {
     event: '活动', location: '地点', time: '时间', starts: '开始', eventIntro: '活动介绍',
     eventMissing: '活动不存在', skip: '跳过', next: '下一步', complete: '完成',
     confirm: '确定', cancel: '取消', loadingEllipsis: '加载中…',
-    pauseRecord: '暂停唱片', resumeRecord: '继续播放唱片',
+    pauseRecord: '暂停唱片', resumeRecord: '继续播放唱片', notProvided: '未提供',
+    copyEmail: '复制邮箱', emailCopied: '已复制', copyFailed: '复制失败',
   },
   en: {
     appTitle: 'Clubs Fair · Event Guide',
     map: 'Map', clubs: 'Clubs', events: 'Events',
     searchClubs: 'Search clubs', searchClubNames: 'Search club names', search: 'Search',
     clubBooths: 'Club Booths', lawnPlaza: 'Lawn / Plaza', stonePath: 'Stone Path',
-    clubIntro: 'Club Profile', gameRules: 'Activity Rules', viewDetails: 'View Details',
+    clubIntro: 'Club Profile', clubEmail: 'Club Email', gameRules: 'Activity Rules', viewDetails: 'View Details',
     announcement: 'Notice', acknowledge: 'Got it', booth: 'Booth {id}',
     boothStatus: 'Booth {id} · {status}', noSearchResults: 'No matching clubs found',
     all: 'All', academic: 'Academic', tech: 'Technology', art: 'Arts', sport: 'Sports', volunteer: 'Community',
@@ -44,7 +45,8 @@ const UI = {
     event: 'Event', location: 'Location', time: 'Time', starts: 'Starts', eventIntro: 'About This Event',
     eventMissing: 'Event not found', skip: 'Skip', next: 'Next', complete: 'Done',
     confirm: 'Confirm', cancel: 'Cancel', loadingEllipsis: 'Loading…',
-    pauseRecord: 'Pause record', resumeRecord: 'Resume record',
+    pauseRecord: 'Pause record', resumeRecord: 'Resume record', notProvided: 'Not provided',
+    copyEmail: 'Copy email', emailCopied: 'Copied', copyFailed: 'Copy failed',
   },
 };
 
@@ -201,14 +203,30 @@ function englishClubCopy(name, boothId) {
 
 function localizeBooth(booth) {
   if (!isEnglish()) return booth;
-  const name = englishClubName(booth.clubName);
-  return { ...booth, clubName: name, category: categoryText(booth.category), ...englishClubCopy(name, booth.id) };
+  const name = booth.nameEn || englishClubName(booth.clubName);
+  const fallback = englishClubCopy(name, booth.id);
+  return {
+    ...booth,
+    clubName: name,
+    category: categoryText(booth.category),
+    ...fallback,
+    intro: booth.introEn || fallback.intro,
+    gameRules: booth.gameRulesEn || '',
+  };
 }
 
 function localizeClub(club) {
   if (!isEnglish()) return club;
-  const name = englishClubName(club.name);
-  return { ...club, name, category: categoryText(club.category), ...englishClubCopy(name, club.boothId) };
+  const name = club.nameEn || englishClubName(club.name);
+  const fallback = englishClubCopy(name, club.boothId);
+  return {
+    ...club,
+    name,
+    category: categoryText(club.category),
+    ...fallback,
+    intro: club.introEn || fallback.intro,
+    gameRules: club.gameRulesEn || '',
+  };
 }
 
 function localizeEvent(event) {

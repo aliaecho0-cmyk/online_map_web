@@ -74,6 +74,13 @@ class MapPage {
             <div class="cc-sub"></div>
             <div class="cc-developer-credit" aria-hidden="true">Developers of this page</div>
             <div class="cc-section"><span class="cc-label">${t('clubIntro')}</span><span class="cc-text cc-intro"></span></div>
+            <div class="cc-section">
+              <span class="cc-label">${t('clubEmail')}</span>
+              <div class="cc-email-wrap">
+                <a class="cc-text cc-email"></a>
+                <button class="cc-email-copy" type="button" hidden>${t('copyEmail')}</button>
+              </div>
+            </div>
             <div class="cc-section"><span class="cc-label">${t('gameRules')}</span><span class="cc-text cc-rules"></span></div>
             <div class="cc-actions"><div class="cc-btn primary">${t('viewDetails')}</div></div>
           </div>
@@ -108,6 +115,7 @@ class MapPage {
     this.searchMask.addEventListener('click', () => this.onSearchMaskTap());
     container.querySelector('.cc-close').addEventListener('click', () => this.onCalloutClose());
     container.querySelector('.cc-btn.primary').addEventListener('click', () => this.onCalloutDetail());
+    this._bindEmailCopy();
 
     // 教程运行时
     this._tutorialActive = false;
@@ -235,6 +243,83 @@ class MapPage {
   }
 
   /* ---------- 摊位气泡 ---------- */
+  _bindEmailCopy() {
+    const emailLink = this.callout.querySelector('.cc-email');
+    this.emailCopyAction = this.callout.querySelector('.cc-email-copy');
+
+    const cancelHold = () => {
+      clearTimeout(this._emailHoldTimer);
+      this._emailHoldTimer = null;
+    };
+
+    emailLink.addEventListener('pointerdown', (event) => {
+      if (!this._currentBooth?.email) return;
+      this._emailHoldOrigin = { x: event.clientX, y: event.clientY };
+      this._emailLongPressed = false;
+      cancelHold();
+      this._emailHoldTimer = setTimeout(() => {
+        this._emailLongPressed = true;
+        this._showEmailCopyAction();
+      }, 550);
+    });
+    emailLink.addEventListener('pointermove', (event) => {
+      if (!this._emailHoldOrigin) return;
+      const dx = event.clientX - this._emailHoldOrigin.x;
+      const dy = event.clientY - this._emailHoldOrigin.y;
+      if (Math.hypot(dx, dy) > 8) cancelHold();
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => {
+      emailLink.addEventListener(type, () => {
+        cancelHold();
+        this._emailHoldOrigin = null;
+        setTimeout(() => { this._emailLongPressed = false; }, 0);
+      });
+    });
+    emailLink.addEventListener('click', (event) => {
+      if (this._emailLongPressed) event.preventDefault();
+    });
+    emailLink.addEventListener('contextmenu', (event) => {
+      if (!this._currentBooth?.email) return;
+      event.preventDefault();
+      this._showEmailCopyAction();
+    });
+    this.emailCopyAction.addEventListener('click', () => this._copyEmail());
+  }
+
+  _showEmailCopyAction() {
+    if (!this._currentBooth?.email) return;
+    clearTimeout(this._emailCopyHideTimer);
+    this.emailCopyAction.textContent = t('copyEmail');
+    this.emailCopyAction.hidden = false;
+    this._emailCopyHideTimer = setTimeout(() => {
+      this.emailCopyAction.hidden = true;
+    }, 4000);
+  }
+
+  async _copyEmail() {
+    const email = this._currentBooth?.email;
+    if (!email) return;
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(email);
+      copied = true;
+    } catch (_) {
+      const input = document.createElement('textarea');
+      input.value = email;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      copied = document.execCommand('copy');
+      input.remove();
+    }
+    this.emailCopyAction.textContent = t(copied ? 'emailCopied' : 'copyFailed');
+    clearTimeout(this._emailCopyHideTimer);
+    this._emailCopyHideTimer = setTimeout(() => {
+      this.emailCopyAction.hidden = true;
+    }, 1600);
+  }
+
   onBoothTap(d) {
     const booth = this.allBooths.find((b) => b.id === d.id);
     if (!booth) return;
@@ -258,8 +343,17 @@ class MapPage {
       developerCredit.classList.add('is-active');
     }
     this.callout.querySelector('.cc-intro').textContent = booth.intro || '';
-    this.callout.querySelector('.cc-rules').textContent = booth.gameRules || '';
+    const emailLink = this.callout.querySelector('.cc-email');
+    emailLink.textContent = booth.email || t('notProvided');
+    emailLink.classList.toggle('is-missing', !booth.email);
+    if (booth.email) emailLink.href = `mailto:${booth.email}`;
+    else emailLink.removeAttribute('href');
+    clearTimeout(this._emailCopyHideTimer);
+    this.emailCopyAction.hidden = true;
+    this.emailCopyAction.textContent = t('copyEmail');
+    this.callout.querySelector('.cc-rules').textContent = booth.gameRules || t('notProvided');
     this.callout.style.display = '';
+    this.callout.scrollTop = 0;
 
     const rect = this.map.getRect();
     const W = rect.width;
@@ -288,6 +382,8 @@ class MapPage {
   }
 
   onCalloutClose() {
+    clearTimeout(this._emailCopyHideTimer);
+    this.emailCopyAction.hidden = true;
     this.callout.style.display = 'none';
     this.map.setHighlightedId('');
   }
@@ -603,6 +699,8 @@ class MapPage {
     clearTimeout(this._mapReadyTimer);
     clearTimeout(this._plazaHlTimer);
     clearTimeout(this._typeTimer);
+    clearTimeout(this._emailHoldTimer);
+    clearTimeout(this._emailCopyHideTimer);
     this._resetTutorialState();
     if (this.map) this.map.destroy();
     if (this.recordPlayer) this.recordPlayer.destroy();

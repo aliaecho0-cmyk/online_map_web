@@ -37,6 +37,7 @@ class ClubDetailPage {
     const booth = club.booth || {};
     const intro = booth.intro || club.intro || club.slogan || t('noDescription');
     const rules = booth.gameRules || '';
+    const email = booth.email || club.email || '';
 
     this.el.innerHTML = `
       <div class="page club-detail-page">
@@ -57,7 +58,13 @@ class ClubDetailPage {
         <div class="card">
           <div class="section-title">${t('clubProfile')}</div>
           <div class="intro-text">${escapeHtml(intro)}</div>
-          ${rules ? `<div class="rules-block"><div class="section-title rules-title">${t('gameRules')}</div><div class="intro-text">${escapeHtml(rules)}</div></div>` : ''}
+          <div class="email-block">
+            <div class="section-title rules-title">${t('clubEmail')}</div>
+            ${email
+              ? `<a class="email-text" href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>`
+              : `<div class="email-text is-missing">${t('notProvided')}</div>`}
+          </div>
+          <div class="rules-block"><div class="section-title rules-title">${t('gameRules')}</div><div class="intro-text">${escapeHtml(rules || t('notProvided'))}</div></div>
         </div>
 
         ${booth.id ? `
