@@ -26,7 +26,7 @@ const INITIAL_ZOOM = 1;
 const CLAMP_MARGIN = 80;
 
 const DEFAULT_VIEW_CELLS_X = 17;
-const DEFAULT_FOCUS_CENTER = { x: 11, y: 14 };
+const DEFAULT_FOCUS_CENTER = { x: 10, y: 14 };
 
 /* 1–8 号与 15 号一列之间的石板路，x=105 为两列按钮净空区域的中心线。 */
 const NPC_ROUTE = { x: 105, top: 168, bottom: 414 };
@@ -104,6 +104,7 @@ export class CustomMap {
     this._npcRaf = 0;
     this._npcStartedAt = 0;
     this._npcFrameKey = '';
+    this._npcReady = false;
     this._destroyed = false;
 
     // 手势运行时
@@ -146,17 +147,25 @@ export class CustomMap {
     this._npcLayer = layer;
     this._npc = npc;
 
-    Object.values(NPC_FRAMES).flat().forEach((src) => {
-      const image = new Image();
-      image.src = src;
-    });
     this._apply(this._viewport);
-    this._npcStartedAt = performance.now();
-    this._tickNpc(this._npcStartedAt);
+    const sources = Object.values(NPC_FRAMES).flat();
+    npc.addEventListener('load', () => npc.classList.add('is-ready'), { once: true });
+    npc.src = NPC_FRAMES.down[0];
+    Promise.all(sources.map((src) => new Promise((resolve) => {
+      const image = new Image();
+      image.onload = resolve;
+      image.onerror = resolve;
+      image.src = src;
+    }))).then(() => {
+      if (this._destroyed || !this._npc) return;
+      this._npcReady = true;
+      this._npcStartedAt = performance.now();
+      this._tickNpc(this._npcStartedAt);
+    });
   }
 
   _tickNpc(now) {
-    if (this._destroyed || !this._npc) return;
+    if (this._destroyed || !this._npc || !this._npcReady) return;
     const elapsed = Math.max(0, now - this._npcStartedAt);
     const routeLength = NPC_ROUTE.bottom - NPC_ROUTE.top;
     const roundTrip = routeLength * 2;
